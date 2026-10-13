@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>콩콩 한글 타자 놀이터</title>
+<style>
+:root{--ink:#26334a;--blue:#4b7bec;--sky:#eaf3ff;--yellow:#ffe08a;--pink:#ffdfeb;--mint:#dff7e8;--white:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#f4f8ff,#fff9ef);font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;color:var(--ink)}
+header{text-align:center;padding:20px 12px 12px}
+h1{margin:0;font-size:clamp(25px,5vw,38px);color:#3159a8}
+header p{margin:7px 0 0;font-size:16px}
+main{max-width:850px;margin:auto;padding:12px}
+.panel{background:white;border-radius:24px;padding:clamp(14px,3vw,24px);box-shadow:0 5px 18px #26334a12;margin-bottom:14px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+button{font:inherit;touch-action:manipulation;cursor:pointer;border:0;border-radius:15px;padding:12px 15px;font-weight:750;color:var(--ink);background:#edf1f7;min-height:48px}
+button:focus-visible{outline:4px solid #f6bd4b;outline-offset:2px}
+.tabs button{flex:1}
+.tabs button.active{background:var(--blue);color:white}
+.prompt{text-align:center;background:var(--sky);border-radius:20px;padding:18px 12px;margin-bottom:15px}
+.prompt .small{font-size:15px}
+.prompt .big{font-size:clamp(34px,8vw,56px);font-weight:900;margin:4px 0;color:#234e9b}
+.prompt .hint{font-size:15px}
+.keyboard{display:grid;gap:7px;max-width:680px;margin:0 auto}
+.keyrow{display:flex;justify-content:center;gap:5px}
+.key{flex:1;max-width:70px;min-width:0;padding:10px 2px;min-height:58px;background:#f0f4fb;border:2px solid #dce6f7;font-size:clamp(18px,4vw,25px);box-shadow:0 3px 0 #d1dceb}
+.key.pressed{background:var(--yellow);border-color:#e4b83c;transform:translateY(2px);box-shadow:none}
+.key.correct{background:var(--mint);border-color:#62c58b}
+.key.wide{max-width:110px;font-size:16px}
+.controls{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;margin-top:16px}
+.primary{background:#315fc4;color:white}
+.secondary{background:#fff0bd}
+.feedback{min-height:36px;text-align:center;font-size:19px;font-weight:800;margin-top:12px}
+.progress{height:10px;border-radius:99px;background:#edf1f7;overflow:hidden;margin:12px 0}
+.progress>div{height:100%;background:#69c990;width:0;transition:width .2s}
+.tilearea{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:14px 0}
+.tile{font-size:30px;min-width:64px;background:#fff0bd;border:2px solid #f0ce68;box-shadow:0 3px 0 #e7c45f}
+.wordbank{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.wordbank button{background:#e7f5ff;border:2px solid #c5e6fa;font-size:24px;min-width:58px}
+.note{font-size:14px;color:#5b6679;text-align:center;line-height:1.6}
+footer{text-align:center;padding:8px 12px 24px;color:#69758a;font-size:13px}
+@media(max-width:420px){.panel{padding:12px}.keyrow{gap:3px}.key{min-height:51px;border-width:1px}.key.wide{font-size:13px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🌈 콩콩 한글 타자 놀이터</h1>
+  <p>천천히 찾아서 톡! 글자를 눌러 봐요.</p>
+</header>
+<main>
+  <section class="panel">
+    
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <label for="studentName" style="font-weight:750">이름</label>
+      <input id="studentName" type="text" maxlength="20" placeholder="이름을 입력해요"
+        style="font:inherit;flex:1;min-width:150px;padding:12px;border:2px solid #dce6f7;border-radius:12px">
+    </div>
+    <div class="tabs" role="tablist">
+      <button id="tab-find" class="active" onclick="setMode('find')">🔎 글자 찾기</button>
+      <button id="tab-word" onclick="setMode('word')">🧩 낱말 만들기</button>
+    </div>
+    <div class="prompt">
+      <div class="small" id="instruction">키보드에서 이 글자를 찾아 눌러 보세요!</div>
+      <div class="big" id="target">ㄱ</div>
+      <div class="hint" id="subhint">찾으면 아래 키보드에서 톡!</div>
+    </div>
+    <div id="findArea">
+      <div class="keyboard" id="keyboard" aria-label="화면 한글 자판"></div>
+    </div>
+    <div id="wordArea" hidden>
+      <div class="note">아래 글자 조각을 순서대로 눌러 낱말을 완성해요.</div>
+      <div class="tilearea" id="answerTiles"></div>
+      <div class="wordbank" id="wordBank"></div>
+    </div>
+    <div class="progress"><div id="progressFill"></div></div>
+    <div class="feedback" id="feedback" aria-live="polite">준비됐나요? 시작해 봐요! ⭐</div>
+    <div class="controls">
+      <button class="secondary" onclick="speakTarget()">🔊 읽어 주기</button>
+      <button class="primary" id="nextBtn" onclick="nextTask()">다음 문제 ➜</button>
+      <button onclick="resetGame()">처음부터 ↻</button><button onclick="printResult()">📄 결과 저장</button>
+    </div>
+  </section>
+  <section class="panel">
+    <h2 style="margin:0 0 8px;font-size:20px">🌟 오늘의 약속</h2>
+    <p style="margin:0;line-height:1.8">① 서두르지 않아요.　② 틀려도 괜찮아요.　③ 글자를 잘 보고 눌러요!</p>
+    <p class="note" style="margin-bottom:0">이 활동은 태블릿 화면을 손가락으로 눌러 연습하는 놀이예요. 실제 키보드 타자 속도를 재는 활동은 아니에요.</p>
+  </section>
+</main>
+
+<footer>콩콩 한글 타자 놀이터 · 초등학교 1학년용</footer>
+<section id="printRecord" style="display:none">
+  <h1>콩콩 한글 타자 놀이터 · 활동 확인</h1>
+  <p>이름: <strong id="printName"></strong></p>
+  <p>활동: <strong id="printMode"></strong></p>
+  <p>완료한 글자 찾기: <strong id="printFind"></strong></p>
+  <p>완성한 낱말: <strong id="printWord"></strong></p>
+  <p>오늘도 한글 연습을 열심히 했어요! ⭐</p>
+</section>
+<style>
+@media print {
+  body * { visibility:hidden !important; }
+  #printRecord, #printRecord * { visibility:visible !important; }
+  #printRecord { display:block !important; position:absolute; left:0; top:0; width:100%; padding:24px; font-size:20px; }
+}
+</style>
+<script>
+const rows = [
+ ['ㅂ','ㅈ','ㄷ','ㄱ','ㅅ','ㅛ','ㅕ','ㅑ','ㅐ','ㅔ'],
+ ['ㅁ','ㄴ','ㅇ','ㄹ','ㅎ','ㅗ','ㅓ','ㅏ','ㅣ'],
+ ['ㅋ','ㅌ','ㅊ','ㅍ','ㅠ','ㅜ','ㅡ']
+];
+const letters = rows.flat();
+const wordTasks = [
+ {word:'나무',parts:['나','무']},{word:'바다',parts:['바','다']},
+ {word:'우유',parts:['우','유']},{word:'고기',parts:['고','기']},
+ {word:'모자',parts:['모','자']},{word:'하마',parts:['하','마']},
+ {word:'기차',parts:['기','차']},{word:'토끼',parts:['토','끼']},
+ {word:'사과',parts:['사','과']},{word:'학교',parts:['학','교']}
+];
+let mode='find', findIndex=0, wordIndex=0, placed=[], completedWords=0, completedLetters=0;
+const $=id=>document.getElementById(id);
+function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
+function buildKeyboard(){
+ const kb=$('keyboard');kb.innerHTML='';
+ rows.forEach(row=>{
+   const r=document.createElement('div');r.className='keyrow';
+   row.forEach(ch=>{
+     const b=document.createElement('button');b.className='key';b.textContent=ch;
+     b.setAttribute('aria-label',ch+' 키');b.onclick=()=>tapLetter(ch,b);r.appendChild(b);
+   });kb.appendChild(r);
+ });
+ const r=document.createElement('div');r.className='keyrow';
+ [['지우기',()=>{ $('feedback').textContent='괜찮아요! 글자를 다시 찾아봐요.'; }],['띄어쓰기',()=>{}]].forEach(([label,fn])=>{const b=document.createElement('button');b.className='key wide';b.textContent=label;b.onclick=fn;r.appendChild(b)});
+ kb.appendChild(r);
+}
+function setMode(m){
+ mode=m;$('tab-find').classList.toggle('active',m==='find');$('tab-word').classList.toggle('active',m==='word');
+ $('findArea').hidden=m!=='find';$('wordArea').hidden=m!=='word';
+ $('instruction').textContent=m==='find'?'키보드에서 이 글자를 찾아 눌러 보세요!':'글자 조각을 순서대로 눌러 낱말을 완성해요!';
+ $('subhint').textContent=m==='find'?'찾으면 아래 키보드에서 톡!':'글자를 모두 모으면 성공!';
+ $('nextBtn').textContent=m==='find'?'다음 문제 ➜':'다른 낱말 ➜';updateTask();
+}
+function currentTarget(){return letters[findIndex%letters.length]}
+function updateTask(){
+ $('feedback').textContent='천천히 찾아봐요! 🌟';
+ if(mode==='find'){$('target').textContent=currentTarget();$('progressFill').style.width=((findIndex%letters.length+1)/letters.length*100)+'%';}
+ else{
+  const t=wordTasks[wordIndex%wordTasks.length];$('target').textContent=t.word;
+  placed=[];$('answerTiles').innerHTML='';const bank=$('wordBank');bank.innerHTML='';
+  shuffle(t.parts.map((p,i)=>({p,i}))).forEach(item=>{const b=document.createElement('button');b.textContent=item.p;b.onclick=()=>choosePart(item.p,b);bank.appendChild(b)});
+  $('progressFill').style.width=((wordIndex%wordTasks.length+1)/wordTasks.length*100)+'%';
+ }
+}
+function tapLetter(ch,b){
+ if(mode!=='find')return;
+ if(ch===currentTarget()){
+  b.classList.add('correct');completedLetters++;$('feedback').textContent='정답이에요! 참 잘했어요! 🎉';
+  $('target').textContent='👏';setTimeout(()=>{findIndex++;updateTask()},650);
+ } else {
+  b.classList.add('pressed');$('feedback').textContent='다시 찾아봐요. '+ch+' 말고 '+currentTarget()+'예요!';
+  setTimeout(()=>b.classList.remove('pressed'),450);
+ }
+}
+function choosePart(part,b){
+ const t=wordTasks[wordIndex%wordTasks.length];
+ if(part===t.parts[placed.length]){
+  placed.push(part);b.disabled=true;b.style.opacity='.45';
+  const tile=document.createElement('button');tile.className='tile';tile.textContent=part;tile.onclick=()=>{};
+  $('answerTiles').appendChild(tile);
+  if(placed.length===t.parts.length){completedWords++;$('feedback').textContent='낱말 완성! 멋져요! 🎉';$('progressFill').style.width='100%';}
+  else $('feedback').textContent='잘했어요! 다음 글자도 찾아봐요.';
+ }else $('feedback').textContent='순서를 다시 생각해 봐요. 첫 글자부터 눌러요!';
+}
+function nextTask(){if(mode==='find')findIndex++;else wordIndex++;updateTask()}
+function resetGame(){findIndex=0;wordIndex=0;placed=[];completedWords=0;completedLetters=0;updateTask()}
+function printResult(){
+ $('printName').textContent=$('studentName').value.trim()||'이름 미입력';
+ $('printMode').textContent=mode==='find'?'글자 찾기':'낱말 만들기';
+ $('printFind').textContent=completedLetters+'개';
+ $('printWord').textContent=completedWords+'개';
+ window.print();
+}
+function speakTarget(){
+ if(!('speechSynthesis' in window)){ $('feedback').textContent='이 기기에서는 읽어 주기를 사용할 수 없어요.';return;}
+ const text=mode==='find'?currentTarget():wordTasks[wordIndex%wordTasks.length].word;
+ const u=new SpeechSynthesisUtterance(text);u.lang='ko-KR';u.rate=.8;window.speechSynthesis.cancel();window.speechSynthesis.speak(u);
+}
+buildKeyboard();updateTask();
+</script>
+</body>
+</html>
